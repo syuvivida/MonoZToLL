@@ -20,88 +20,102 @@ bool pt_greater(const TLorentzVector* a, const TLorentzVector* b){
     return (A > B);
 }
 void ana(){
-    string outputfile = "../output/test.root";
-    // out Tree branches
-	TFile* fout = new TFile(outputfile.c_str(), "RECREATE" );
-	TTree outTree("tree","out branches");
-	//outTree.Branch("passTrigList", &passTrigList);  
-	//outTree.Branch("prescaleList", &prescaleList);  
-	//outTree.Branch("HT_MET", &HT_MET);  
-	//outTree.Branch("HT_noMET", &HT_noMET);  
-	//outTree.Branch("nPassTrig", &nPassTrig);  
+    TTree outTree("tree","out branches");
     ifstream inputtxtFile("../ntuple_filelist/signal/DarkMatter_MonoZToLL_NLO_Vector_Mx2-150_Mv-500_gDM1_gQ0p25_TuneCUETP8M1_Mx1-1_ctau-1_13TeV-madgraph.txt");
     string inputFile;
-    TH1D *Z_massee = new TH1D("Z_massee", "Z->ee", 150, 0, 150);
+    //void some variable
+    Int_t elenumbers;
+    Int_t munumbers;
+    Int_t taunumbers;
     Long64_t NNTotal=0;
     Long64_t nPass[20]={0};
+    //Create histrogram
+    TH1D *Z_massee = new TH1D("Z_massee", "Z->ee", 150, 0, 150);
+    TH1D *elenumb = new TH1D("elenumb", "ee",5,0,5);
+    TH1D *munumb = new TH1D("munumb", "mu",5,0,5);
+    TH1D *taunumb = new TH1D("taunumb", "tau",5,0,5);
     while(getline(inputtxtFile,inputFile))
     {
         //std::string inputFile= "NCUGlobalTuples_1.root"
         TreeReader data(inputFile.data());
         Long64_t nTotal=0;
-        Long64_t neeTotal=0;
-        
-        Long64_t nelePass[20]={0};
         for(Long64_t jEntry=0; jEntry<data.GetEntriesFast() ;jEntry++)
         {
             NNTotal++;
             data.GetEntry(jEntry);
             nTotal++;
+            // 0. check the generator-level information and make sure there is a Z->e+e-
+            Int_t nGenPar        = data.GetInt("nGenPar");
+            TClonesArray* genParP4 = (TClonesArray*) data.GetPtrTObject("genParP4");
+            Int_t* genParId      = data.GetPtrInt("genParId");
+            Int_t* genParSt      = data.GetPtrInt("genParSt");
+            Int_t* genMomParId   = data.GetPtrInt("genMomParId");
+            bool findEle = false;
+            bool findmu = false;
+            bool findtau = false;
+            vector<TLorentzVector*> myEles;
+            vector<TLorentzVector*> myMu;
+            vector<TLorentzVector*> myTau;
+            for(int ig=0; ig < nGenPar; ig++)
+            {
+                TLorentzVector* thisGen = (TLorentzVector*)genParP4->At(ig);
+                int pid=genParId[ig];
+                int mompid = genMomParId[ig];
+                int status = genParSt[ig];
+                if(abs(pid)==11 && mompid==23)
+                {
+                    findEle=true;
+                    myEles.push_back(thisGen);
+                }
+                else if(abs(pid)==13 && mompid==23)
+                {
+                    findmu=true; 
+                    myMu.push_back(thisGen);
+                }
+                else if(abs(pid)==15 && mompid==23)
+                {
+                    findtau=true;
+                    myTau.push_back(thisGen);
+                }
+            }
             //0. has a good vertex
             int nVtx        = data.GetInt("nVtx");
             if(nVtx<1)continue;
             //1. trigger
             //2. electron
+            Long64_t nelePass[20]={0};
             int nEle = data.GetInt("nEle");
             TClonesArray* eleP4 = (TClonesArray*) data.GetPtrTObject("eleP4");
             vector<bool>& eleIsPassLoose = *((vector<bool>*) data.GetPtr("eleIsPassLoose"));
             vector<bool>& eleIsPassMedium = *((vector<bool>*) data.GetPtr("eleIsPassMedium"));
             vector<bool>& eleIsPassVeto = *((vector<bool>*) data.GetPtr("eleIsPassVeto"));
-            vector<TLorentzVector*> myEles;
-            myEles.clear();
-            //bool findAZ=false;
-            bool findEle[4]={false,false,false,false};
+            vector<TLorentzVector*> goodElectrons;
+            goodElectrons.clear();
             for(int ie = 0; ie < nEle; ie++)
             {
                 TLorentzVector* myEle = (TLorentzVector*)eleP4->At(ie);
-                if(fabs(myEle->Eta())<2.5 )
+                if(fabs(myEle->Eta())>2.5)
                 {
-                    findEle[0]=true;
+                    nelePass[0]++;
+                    continue;
                 }
                 if(eleIsPassVeto[ie])
                 {
-                    findEle[1]=true;
+                    nelePass[1]++;
+                    continue;
                 }
-                if(eleIsPassMedium[ie])
+                if(!eleIsPassMedium[ie])
                 {
-                    findEle[2]=true;
-                    if(myEle->Pt()>20 )
-                    {
-                        findEle[3]=true;
-                    }
+                    nelePass[2]++;
+                    continue;
                 }
-                if(findEle[0] && findEle[1]&&findEle[2]&&findEle[3])
+                if(myEle->Pt()>20 )
                 {
-                    myEles.push_back(myEle);
+                    continue;
                 }
-            }
-            sort(myEles.begin(), myEles.end(), pt_greater);
-            if(findEle[0])
-            {
-                nelePass[0]++;
-            }
-            if(findEle[1])
-            {
-                nelePass[1]++;
-            }
-            if(findEle[2])
-            {
-                nelePass[2]++;
-            }
-            if(findEle[3])
-            {
-                nelePass[3]++;
-            }
+                goodElectrons.push_back(myEle);
+            }//End of loop nEle event
+            sort(goodElectrons.begin(), goodElectrons.end(), pt_greater);
             //cout<<"size of myEles is ="<<myEles.size()<<endl;
             //3. muon
             int nMu = data.GetInt("nMu");
@@ -165,24 +179,21 @@ void ana(){
                     }
                 }
             }
-            //cout<<myMuos.size()<<endl;
-            //cout<<"size of myMuos is ="<<myMuos.size()<<endl;
             //For lepton Selection
             bool Zee = false;
-            if(myEles.size()>=2 && myMuos.size()>=2)
+            if(goodElectrons.size()>=2 && myMuos.size()>=2)
             {
                 continue;
             }
             nPass[0]++;
-            if (myEles.size()<2 && myMuos.size()<2)
+            if (goodElectrons.size()<2 && myMuos.size()<2)
             {
                 continue;
             }
             nPass[1]++;
-            if (myEles.size()>myMuos.size())
+            if (goodElectrons.size()>myMuos.size())
             {
                 Zee=true;
-                neeTotal++;
                 nPass[1]++;
             }
             /*
@@ -221,12 +232,12 @@ void ana(){
                 double PDGZmass=91.1876;
                 double PT;
                 double deltaMass;
-                PT1=myEles[0]->Pt();
-                PT2=myEles[1]->Pt();
+                PT1=goodElectrons[0]->Pt();
+                PT2=goodElectrons[1]->Pt();
                 if(PT1>25&&PT2>20)
                 {
                     TLorentzVector Z_boson_ee;
-                    Z_boson_ee=*myEles[0]+*myEles[1];
+                    Z_boson_ee=*goodElectrons[0]+*goodElectrons[1];
                     //cout<<"total Mass ="<<MassLL<<endl;
                     deltaMass=abs(PDGZmass-Z_boson_ee.M());
                     //cout<<"deltaMass ="<<deltaMass<<endl;
@@ -234,16 +245,6 @@ void ana(){
                     Z_massee->Fill(Z_boson_ee.M());
                 }
             }
-
-            //cout<<"ele1 PT "<<myEles[0]->Pt()<<endl;
-            //cout<<"ele2 PT "<<myEles[1]->Pt()<<endl;
-            //Z_boson_ee.SetPxPyPzE(myEle1->Px()+myEle2->Px(),myEle1->Py()+myEle2->Py(),myEle1->Pz()+myEle2->Pz(),myEle1->E()+myEle2->E());         
-            /*
-            Z_boson_ee = *myEle1+*myEle2;
-
-            Z_massee->Fill(Z_boson_ee.M());
-            */
-            //cout<<Z_boson_ee.M()<<endl;
             //AK4 Jet
             const int nTHINJets = data.GetInt("THINnJet");
             TClonesArray* thinjetP4 = (TClonesArray*) data.GetPtrTObject("THINjetP4");
@@ -280,38 +281,13 @@ void ana(){
                     }
                 }// end of inner loop jet
             } // end of outer loop let
-            
-            /*
-            vector<vector<float>>& THINjetTrackPt = *((vector<vector<float>>*) data.GetPtr("THINjetTrackPt"));    
-            for(int i=0; i<nTHINJets;i++)
-            {
-                for(int j=0;j<THINjetTrackPt[i].size();j++)
-                {
-                    cout<<"1"<<endl;
-                }
-            }*/
-            //cout<<typeid(THINjetTrackPt).name()<<endl;
-            /*
-            for(unsigned int i=0; i<indexForDPhi.size(); i++)
-            {
-                int jetIndex=indexForDPhi[i];
-                TLorentzVector* thisJet = (TLorentzVector*)thinjetP4->At(jetIndex);
-	            double dphi=TVector2::Phi_mpi_pi(pfMetPhi-thisJet->Phi());
 
-            }
-            */
         }// end of loop over entries
-        cout << "neeTotal    = " << neeTotal << endl;
-        cout << "nTotal    = " << nTotal << endl;
-        //cout << "nelePass[" << 0 << "]= " << nelePass[0] << std::endl;
-        for(int i=0;i<20;i++)
-        if(nPass[i]>0)
-            std::cout << "nPass[" << i << "]= " << nPass[i] << std::endl;
-
-        efferr(nelePass[10],neeTotal);
-        cout<<"NNTotal ="<<NNTotal<<endl;
-        cout<<"End of file"<<endl;
     }
+    string outputfile = "../output/test.root";
+    // out Tree branches
+	TFile* fout = new TFile(outputfile.c_str(), "RECREATE" );
+	fout->Write();
     Z_massee->Write();
     fout->Close();
 }
