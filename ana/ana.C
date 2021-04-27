@@ -21,7 +21,8 @@ bool pt_greater(const TLorentzVector* a, const TLorentzVector* b){
 }
 void ana(){
     TTree outTree("tree","out branches");
-    ifstream inputtxtFile("../ntuple_filelist/signal/DarkMatter_MonoZToLL_NLO_Vector_Mx2-150_Mv-500_gDM1_gQ0p25_TuneCUETP8M1_Mx1-1_ctau-1_13TeV-madgraph.txt");
+    //ifstream inputtxtFile("../ntuple_filelist/signal/DarkMatter_MonoZToLL_NLO_Vector_Mx2-150_Mv-500_gDM1_gQ0p25_TuneCUETP8M1_Mx1-1_ctau-1_13TeV-madgraph.txt");
+    ifstream inputtxtFile("test.txt");
     string inputFile;
     //void some variable
     Int_t elenumbers;
@@ -29,6 +30,9 @@ void ana(){
     Int_t taunumbers;
     Long64_t NNTotal=0;
     Long64_t nPass[20]={0};
+    Long64_t neeTotal=0;
+    Long64_t neeeTotal=0;
+    Long64_t nelePass[6]={0};
     //Create histrogram
     TH1D *Z_massee = new TH1D("Z_massee", "Z->ee", 150, 0, 150);
     TH1D *elenumb = new TH1D("elenumb", "ee",5,0,5);
@@ -50,7 +54,8 @@ void ana(){
             Int_t* genParId      = data.GetPtrInt("genParId");
             Int_t* genParSt      = data.GetPtrInt("genParSt");
             Int_t* genMomParId   = data.GetPtrInt("genMomParId");
-            bool findEle = false;
+            bool find1Ele = false;
+            bool find2Ele = false;
             bool findmu = false;
             bool findtau = false;
             vector<TLorentzVector*> myEles;
@@ -64,8 +69,12 @@ void ana(){
                 int status = genParSt[ig];
                 if(abs(pid)==11 && mompid==23)
                 {
-                    findEle=true;
+                    find1Ele=true;
                     myEles.push_back(thisGen);
+                    //if(myEles.size()==2)
+                    //{    
+                    //    find2Ele=true;       
+                    //}
                 }
                 else if(abs(pid)==13 && mompid==23)
                 {
@@ -78,12 +87,20 @@ void ana(){
                     myTau.push_back(thisGen);
                 }
             }
+            //if(find2Ele)
+            //{
+            //    neeTotal++;
+            //}
+            if(find1Ele)
+            {
+                neeTotal++;
+                neeeTotal++;
+            }
             //0. has a good vertex
             int nVtx        = data.GetInt("nVtx");
             if(nVtx<1)continue;
             //1. trigger
-            //2. electron
-            Long64_t nelePass[20]={0};
+            //2.Reco  electron
             int nEle = data.GetInt("nEle");
             TClonesArray* eleP4 = (TClonesArray*) data.GetPtrTObject("eleP4");
             vector<bool>& eleIsPassLoose = *((vector<bool>*) data.GetPtr("eleIsPassLoose"));
@@ -91,31 +108,65 @@ void ana(){
             vector<bool>& eleIsPassVeto = *((vector<bool>*) data.GetPtr("eleIsPassVeto"));
             vector<TLorentzVector*> goodElectrons;
             goodElectrons.clear();
-            for(int ie = 0; ie < nEle; ie++)
+            bool cut0=false;
+            bool cut1=false;
+            bool cut2=false;
+            bool cut3=false;
+            bool cut4=false;
+            if(find1Ele)
             {
-                TLorentzVector* myEle = (TLorentzVector*)eleP4->At(ie);
-                if(fabs(myEle->Eta())>2.5)
+                for(int ie = 0; ie < nEle; ie++)
                 {
-                    nelePass[0]++;
-                    continue;
-                }
-                if(eleIsPassVeto[ie])
+                    TLorentzVector* myEle = (TLorentzVector*)eleP4->At(ie);
+                    cut0=true;
+                    if(fabs(myEle->Eta())>2.5)
+                    {
+                        continue;
+                    }
+                    cut1=true;
+                    if(!eleIsPassVeto[ie])
+                    {
+
+                        continue;
+                    }
+                    cut2=true;
+                    //nelePass[3]++;
+                    if(!eleIsPassMedium[ie])
+                    {
+                        continue;
+                    }
+                    cut3=true;
+                    //nelePass[4]++;
+                    if(myEle->Pt()<20 )
+                    {
+                        continue;
+                    }
+                    cut4=true;
+                    //nelePass[5]++;
+                    goodElectrons.push_back(myEle);
+                }//End of loop nEle event
+                sort(goodElectrons.begin(), goodElectrons.end(), pt_greater);
+                if(cut1)
                 {
                     nelePass[1]++;
-                    continue;
                 }
-                if(!eleIsPassMedium[ie])
+                if(cut2)
                 {
                     nelePass[2]++;
-                    continue;
                 }
-                if(myEle->Pt()>20 )
+                if(cut3)
                 {
-                    continue;
+                    nelePass[3]++;
                 }
-                goodElectrons.push_back(myEle);
-            }//End of loop nEle event
-            sort(goodElectrons.begin(), goodElectrons.end(), pt_greater);
+                if(cut4)
+                {
+                    nelePass[4]++;
+                }
+            }
+            if(cut0)
+            {
+                nelePass[0]++;
+            }
             //cout<<"size of myEles is ="<<myEles.size()<<endl;
             //3. muon
             int nMu = data.GetInt("nMu");
@@ -283,7 +334,17 @@ void ana(){
             } // end of outer loop let
 
         }// end of loop over entries
+        //Search eletron cut eff
+        cout<<"End of file"<<endl;
     }
+    for(int i=0;i<6;i++)
+    {
+        cout << "nelePass[" << i << "]= " << nelePass[i] << endl;
+        efferr(nelePass[i],neeTotal);
+    }
+     cout<<"Totle event"<<NNTotal<<endl;
+    cout<<"Totle true 2 electron"<<neeTotal<<endl;
+    cout<<"Totle true electron"<<neeeTotal<<endl;
     string outputfile = "../output/test.root";
     // out Tree branches
 	TFile* fout = new TFile(outputfile.c_str(), "RECREATE" );
