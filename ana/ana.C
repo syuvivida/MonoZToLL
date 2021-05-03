@@ -1,6 +1,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <queue>
 #include <algorithm>
 #include <TH1D.h>
 #include <TFile.h>
@@ -14,11 +15,12 @@ void efferr(float nsig,float ntotal,float factor=1)
   float err = sqrt( (1-eff)*eff/ntotal);
   cout << "efficiency = " << eff*factor << " +- " << err*factor << endl;
 }
-bool pt_greater(const TLorentzVector* a, const TLorentzVector* b){
-	double A = a->Pt();
-    double B = b->Pt();
+bool pt_greater(const TLorentzVector a, const TLorentzVector b){
+	double A = a.Pt();
+    double B = b.Pt();
     return (A > B);
 }
+
 void ana(){
     TTree outTree("tree","out branches");
     //ifstream inputtxtFile("../ntuple_filelist/signal/DarkMatter_MonoZToLL_NLO_Vector_Mx2-150_Mv-500_gDM1_gQ0p25_TuneCUETP8M1_Mx1-1_ctau-1_13TeV-madgraph.txt");
@@ -32,9 +34,10 @@ void ana(){
     Long64_t nPass[20]={0};
     Long64_t neeTotal=0;
     Long64_t neeeTotal=0;
-    Long64_t nelePass[6]={0};
+    Long64_t nelePass[8]={0};
     //Create histrogram
     TH1D *Z_massee = new TH1D("Z_massee", "Z->ee", 150, 0, 150);
+    TH1D *Z_massmu = new TH1D("Z_massmu", "Z->mumu", 150, 0, 150);
     TH1D *elenumb = new TH1D("elenumb", "ee",5,0,5);
     TH1D *munumb = new TH1D("munumb", "mu",5,0,5);
     TH1D *taunumb = new TH1D("taunumb", "tau",5,0,5);
@@ -54,7 +57,7 @@ void ana(){
             Int_t* genParId      = data.GetPtrInt("genParId");
             Int_t* genParSt      = data.GetPtrInt("genParSt");
             Int_t* genMomParId   = data.GetPtrInt("genMomParId");
-            bool find1Ele = false;
+            bool matchee = false;
             bool find2Ele = false;
             bool findmu = false;
             bool findtau = false;
@@ -69,12 +72,8 @@ void ana(){
                 int status = genParSt[ig];
                 if(abs(pid)==11 && mompid==23)
                 {
-                    find1Ele=true;
+                    matchee=true;
                     myEles.push_back(thisGen);
-                    //if(myEles.size()==2)
-                    //{    
-                    //    find2Ele=true;       
-                    //}
                 }
                 else if(abs(pid)==13 && mompid==23)
                 {
@@ -87,18 +86,13 @@ void ana(){
                     myTau.push_back(thisGen);
                 }
             }
-            //if(find2Ele)
-            //{
-            //    neeTotal++;
-            //}
-            if(find1Ele)
+            if(matchee)
             {
                 neeTotal++;
-                neeeTotal++;
             }
             //0. has a good vertex
             int nVtx        = data.GetInt("nVtx");
-            if(nVtx<1)continue;
+            //if(nVtx<1)continue;
             //1. trigger
             //2.Reco  electron
             int nEle = data.GetInt("nEle");
@@ -106,67 +100,55 @@ void ana(){
             vector<bool>& eleIsPassLoose = *((vector<bool>*) data.GetPtr("eleIsPassLoose"));
             vector<bool>& eleIsPassMedium = *((vector<bool>*) data.GetPtr("eleIsPassMedium"));
             vector<bool>& eleIsPassVeto = *((vector<bool>*) data.GetPtr("eleIsPassVeto"));
-            vector<TLorentzVector*> goodElectrons;
+            vector<TLorentzVector> goodElectrons;
             goodElectrons.clear();
-            bool cut0=false;
-            bool cut1=false;
-            bool cut2=false;
-            bool cut3=false;
-            bool cut4=false;
-            if(find1Ele)
+            bool cutee[8]={false};
+            vector<int> vetoee;
+            if(nEle==0)
             {
-                for(int ie = 0; ie < nEle; ie++)
+                continue;
+                cout<<"debug"<<endl;
+            }
+            for(int ie = 0; ie < nEle; ie++)
+            {
+                TLorentzVector* myEle = (TLorentzVector*)eleP4->At(ie);
+                cutee[0]=true;
+                if(myEle->Pt()<20 )
                 {
-                    TLorentzVector* myEle = (TLorentzVector*)eleP4->At(ie);
-                    cut0=true;
-                    if(fabs(myEle->Eta())>2.5)
-                    {
-                        continue;
-                    }
-                    cut1=true;
-                    if(!eleIsPassVeto[ie])
-                    {
-
-                        continue;
-                    }
-                    cut2=true;
-                    //nelePass[3]++;
-                    if(!eleIsPassMedium[ie])
-                    {
-                        continue;
-                    }
-                    cut3=true;
-                    //nelePass[4]++;
-                    if(myEle->Pt()<20 )
-                    {
-                        continue;
-                    }
-                    cut4=true;
-                    //nelePass[5]++;
-                    goodElectrons.push_back(myEle);
+                    continue;
+                }
+                cutee[1]=true;
+                if(fabs(myEle->Eta())>2.5)
+                {
+                    continue;
+                }
+                cutee[2]=true;
+                if(eleIsPassVeto[ie])
+                {
+                    vetoee.push_back(ie);   
+                }
+                if(!eleIsPassMedium[ie])
+                {
+                    continue;
+                }
+                vector<int>::iterator p=find(vetoee.begin(),vetoee.end(),ie);
+                if(p !=vetoee.end())
+                {
+                    vetoee.erase(p);
+                }
+                cutee[3]=true;
+                    goodElectrons.push_back(*myEle);
                 }//End of loop nEle event
+                if(goodElectrons.size()>=2)
+                {
+                    //cout<<"111111"<<endl;
+                    if(vetoee.size()==0)
+                    {
+                        //cout<<"00000"<<endl;
+                        cutee[4]=true;
+                    }
+                }
                 sort(goodElectrons.begin(), goodElectrons.end(), pt_greater);
-                if(cut1)
-                {
-                    nelePass[1]++;
-                }
-                if(cut2)
-                {
-                    nelePass[2]++;
-                }
-                if(cut3)
-                {
-                    nelePass[3]++;
-                }
-                if(cut4)
-                {
-                    nelePass[4]++;
-                }
-            }
-            if(cut0)
-            {
-                nelePass[0]++;
-            }
             //cout<<"size of myEles is ="<<myEles.size()<<endl;
             //3. muon
             int nMu = data.GetInt("nMu");
@@ -175,85 +157,72 @@ void ana(){
             vector<bool>& isSoftMuon = *((vector<bool>*) data.GetPtr("isSoftMuon"));
             vector<bool>& isGlobalMuon = *((vector<bool>*) data.GetPtr("isGlobalMuon"));
             vector<bool>& isTrackerMuon = *((vector<bool>*) data.GetPtr("isTrackerMuon"));
-            float* mudz     = data.GetPtrFloat("mudz");
-            float* mudxy     = data.GetPtrFloat("mudxy");
-            float* muChi2NDF     = data.GetPtrFloat("muChi2NDF");
-            int* muPixelHits   = data.GetPtrInt("muPixelHits");
-            int* muTrkLayers   = data.GetPtrInt("muTrkLayers");
-            int* muPixelLayers = data.GetPtrInt("muMatches");
-            float* muChHadIso     = data.GetPtrFloat("muChHadIso");
-            float* muNeHadIso     = data.GetPtrFloat("muNeHadIso");
-            float* muGamIso     = data.GetPtrFloat("muGamIso");
-            float* muPUPt     = data.GetPtrFloat("muPUPt");
-            int* muHits = data.GetPtrInt("muHits");//vaild muon hits?
-            int* muMatches = data.GetPtrInt("muMatches");//Matched Muon Stations?
-            vector<int> myTMuos;
-            vector<int> mySMuos;
-            vector<int> myMuos;
+            float* muChHadIso =  data.GetPtrFloat("muChHadIso");
+            float* muNeHadIso =  data.GetPtrFloat("muNeHadIso");
+            float* muGamIso =  data.GetPtrFloat("muGamIso");
+            float* muPUPt =  data.GetPtrFloat("muPUPt");
+            int* muTrkLayers =  data.GetPtrInt("muTrkLayers");
+            vector<TLorentzVector> goodmuons;
+            goodmuons.clear();
             Double_t myMuIso;
-            myTMuos.clear();
-            mySMuos.clear();
-            myMuos.clear();
-            for(int im = 0; im < nMu; im++)
-            {
-                TLorentzVector* myMu = (TLorentzVector*)muP4->At(im);
-                double mupT=myMu->Pt();
-                myMuIso=(muChHadIso[im] +max(0.,muNeHadIso[im]+muGamIso[im]-0.5*muPUPt[im]))/mupT;
-                if( fabs(myMu->Eta())>2.4 ) 
+            vector<int> vetomu;
+            bool cutmu[8]={false};
+                for(int im = 0; im < nMu; im++)
                 {
-                    continue;
-                }
-                if(muTrkLayers[im]<5)
-                {
-                    continue;
-                }
-                if(isTightMuon[im])
-                {
-                    if(isGlobalMuon[im])
+                    TLorentzVector* myMu = (TLorentzVector*)muP4->At(im);
+                    double mupT=myMu->Pt();
+                    myMuIso=(muChHadIso[im] +max(0.,muNeHadIso[im]+muGamIso[im]-0.5*muPUPt[im]))/mupT;
+                    if(myMu->Pt()<20) 
                     {
-                        if(myMu->Pt()>20 && muChi2NDF[im]<10 && muPixelHits[im]>0&&muHits[im]>0 &&muMatches[im]>1&&mudxy[im]<0.2&&mudz[im]<0.5&&myMuIso<=0.15)
-                        {
-                           myMuos.push_back(im);
-                           continue;
-                           //cout<<"0"<<endl;
-                        }
+                        continue;
+                    }
+                    cutmu[0]=true;
+                    if(fabs(myMu->Eta())>2.4) 
+                    {
+                        continue;
+                    }
+                    cutmu[1]=true;
+                    if(myMuIso>0.15)
+                    {
+                        continue;
+                    }
+                    cutmu[2]=true;
+                    if(muTrkLayers[im]<5)
+                    {
+                        continue;
+                    }
+                    cutmu[3]=true;
+                    if(isSoftMuon[im])
+                    {
+                        vetomu.push_back(im);   
+                    }
+                    if(!isTightMuon[im])
+                    {
+                        continue;
+                    }
+                    vector<int>::iterator p=find(vetomu.begin(),vetomu.end(),im);
+                    if(p !=vetomu.end())
+                    {
+                        vetomu.erase(p);
+                    }
+                    goodmuons.push_back(*myMu);
+                }//end of mu loop
+                if(goodmuons.size()>=2)
+                {
+                    //cout<<"111111"<<endl;
+                    if(vetomu.size()==0)
+                    {
+                        cutmu[4]=true;
+                        //cout<<"00000"<<endl;
                     }
                 }
-                if(isSoftMuon[im])
-                {
-                    if(isGlobalMuon[im]||isTrackerMuon[im])
-                    {
-                        if(myMu->Pt()>10&&muPixelLayers[im]>0&&mudxy[im]<0.3&&mudz[im]<20&&myMuIso<=0.25)
-                        {
-                            myMuos.push_back(im);
-                        }
-                    }
-                }
-            }
-            //For lepton Selection
-            bool Zee = false;
-            if(goodElectrons.size()>=2 && myMuos.size()>=2)
-            {
-                continue;
-            }
-            nPass[0]++;
-            if (goodElectrons.size()<2 && myMuos.size()<2)
-            {
-                continue;
-            }
-            nPass[1]++;
-            if (goodElectrons.size()>myMuos.size())
-            {
-                Zee=true;
-                nPass[1]++;
-            }
-            /*
+            sort(goodmuons.begin(), goodmuons.end(), pt_greater);       
             //4. veto tau (use to identified  and  rejected bg) 
             int nTau = data.GetInt("HPSTau_n");
             TClonesArray* tauP4 = (TClonesArray*) data.GetPtrTObject("HPSTau_4Momentum");
             vector<bool>& disc_decayModeFinding = *((vector<bool>*) data.GetPtr("disc_decayModeFinding"));// DecayModeFinding metho?
-            vector<int> myTaus;
-            myTaus.clear();
+            vector<TLorentzVector> goodtau;
+            goodtau.clear();
             for(int it=0; it < nTau; it++)
             {
                 TLorentzVector* myTau = (TLorentzVector*)tauP4->At(it);
@@ -265,35 +234,109 @@ void ana(){
                 {
                     continue;
                 }
-                if( !disc_decayModeFinding[it] )
+                if(!disc_decayModeFinding[it])
                 {
                     continue;
                 }
-                myTaus.push_back(it);
-            }
-            if(myTaus.size()>0)
+                goodtau.push_back(*myTau);
+            }//end of tau loop
+            bool tauee = false;
+            bool taumu = false;
+            if(matchee)
             {
-                continue;
+                if(goodtau.size()>0)
+                {
+                    for(int i=0;i<goodtau.size();i++)
+                    {
+                        for(int j=0;j<goodElectrons.size();j++)
+                        {
+                            if(goodtau[i].DeltaR(goodElectrons[j])>0.4)
+                            {
+                                tauee = true;
+                                break;
+                            }
+                        }
+                        if(tauee)
+                        {
+                            break;
+                        }
+                
+                    }
+                }
+                if(tauee)
+                {
+                    continue;
+                }
             }
-            */
+            /*for(int k=0;k<goodmuons.size();k++)
+            {
+                if(goodtau[i].DeltaR(goodmuons[k])>0.4)
+                {
+                    cout<<"here"<<endl;
+                    continue;
+                }
+            } 
+            */   
+            //cout<<"tau size ="<<goodtau.size()<<endl;
+            //For lepton Selection
+            bool Zee = false;
+            bool Zmu = false;
+            if (goodElectrons.size() >=2 && goodmuons.size()<2)
+            {
+                Zee=true;   
+            }
+            if (goodmuons.size() >=2 && goodElectrons.size()<2)
+            {
+                Zmu=true;
+            }     
+            double PDGZmass=91.1876;
             //5. Z -> ee
             if(Zee)
             {
                 double PT1, PT2;
-                double PDGZmass=91.1876;
                 double PT;
                 double deltaMass;
-                PT1=goodElectrons[0]->Pt();
-                PT2=goodElectrons[1]->Pt();
+                PT1=goodElectrons[0].Pt();
+                PT2=goodElectrons[1].Pt();
+                cutee[5]=true;
                 if(PT1>25&&PT2>20)
                 {
+                    cutee[6]=true;
                     TLorentzVector Z_boson_ee;
-                    Z_boson_ee=*goodElectrons[0]+*goodElectrons[1];
-                    //cout<<"total Mass ="<<MassLL<<endl;
+                    Z_boson_ee=goodElectrons[0]+goodElectrons[1];
                     deltaMass=abs(PDGZmass-Z_boson_ee.M());
-                    //cout<<"deltaMass ="<<deltaMass<<endl;
                     if(deltaMass>15)continue;
+                    cutee[7]=true;
                     Z_massee->Fill(Z_boson_ee.M());
+                }
+            }
+            if(Zmu)
+            {
+                double PT1, PT2;
+                double PT;
+                double deltaMass;
+                PT1=goodmuons[0].Pt();
+                PT2=goodmuons[1].Pt();
+                cutmu[5]=true;
+                if(PT1>25&&PT2>20)
+                {
+                    cutmu[6]=true;
+                    TLorentzVector Z_boson_mu;
+                    Z_boson_mu=goodmuons[0]+goodmuons[1];
+                    deltaMass=abs(PDGZmass-Z_boson_mu.M());
+                    if(deltaMass>15)continue;
+                    cutmu[7]=true;
+                    Z_massmu->Fill(Z_boson_mu.M());
+                }
+            }
+            if(matchee)
+            {
+                for(int i=0;i<=7;i++)
+                {
+                   if(cutee[i])
+                    {
+                        nelePass[i]++;
+                    }    
                 }
             }
             //AK4 Jet
@@ -332,23 +375,20 @@ void ana(){
                     }
                 }// end of inner loop jet
             } // end of outer loop let
-
         }// end of loop over entries
-        //Search eletron cut eff
         cout<<"End of file"<<endl;
     }
-    for(int i=0;i<6;i++)
+    for(int i=0;i<8;i++)
     {
         cout << "nelePass[" << i << "]= " << nelePass[i] << endl;
         efferr(nelePass[i],neeTotal);
     }
-     cout<<"Totle event"<<NNTotal<<endl;
-    cout<<"Totle true 2 electron"<<neeTotal<<endl;
-    cout<<"Totle true electron"<<neeeTotal<<endl;
+    //cout<<"Totle true 2 electron"<<neeTotal<<endl;
     string outputfile = "../output/test.root";
     // out Tree branches
 	TFile* fout = new TFile(outputfile.c_str(), "RECREATE" );
 	fout->Write();
     Z_massee->Write();
+    Z_massmu->Write();
     fout->Close();
 }
