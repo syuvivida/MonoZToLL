@@ -220,6 +220,8 @@ void ana(){
             //4. veto tau (use to identified  and  rejected bg) 
             int nTau = data.GetInt("HPSTau_n");
             TClonesArray* tauP4 = (TClonesArray*) data.GetPtrTObject("HPSTau_4Momentum");
+            //vector<bool>& disc_decayModeFinding = *((vector<bool>*) data.GetPtr("disc_decayModeFinding"));// DecayModeFinding metho?
+            vector<bool>& disc_decayModeFinding = *((vector<bool>*) data.GetPtr("disc_decayModeFinding"));// DecayModeFinding metho?
             vector<bool>& disc_decayModeFinding = *((vector<bool>*) data.GetPtr("disc_decayModeFinding"));// DecayModeFinding metho?
             vector<TLorentzVector> goodtau;
             goodtau.clear();
@@ -238,6 +240,7 @@ void ana(){
                 {
                     continue;
                 }
+
                 goodtau.push_back(*myTau);
             }//end of tau loop
             bool tauee = false;

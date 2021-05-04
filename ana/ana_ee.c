@@ -31,7 +31,7 @@ void ana_ee(){
     Int_t taunumbers;
     Long64_t neeTotal=0;
     Long64_t nPass[20]={0};
-    Long64_t nelePass[8]={0};
+    Long64_t nelePass[9]={0};
     //Create histrogram
     TH1D *Z_massee = new TH1D("Z_massee", "Z->ee", 150, 0, 150);
     TH1D *elenumb = new TH1D("elenumb", "ee",5,0,5);
@@ -85,17 +85,11 @@ void ana_ee(){
                 vector<bool>& eleIsPassVeto = *((vector<bool>*) data.GetPtr("eleIsPassVeto"));
                 vector<TLorentzVector> goodElectrons;
                 goodElectrons.clear();
-                bool cutee[8]={false};
+                bool cutee[9]={false};
                 vector<int> vetoee;
-                if(nEle==0)
-                {
-                    continue;
-                    cout<<"debug"<<endl;
-                }
                 for(int ie = 0; ie < nEle; ie++)
                 {
                     TLorentzVector* myEle = (TLorentzVector*)eleP4->At(ie);
-                    cutee[0]=true;
                     elePT->Fill(myEle->Pt());
                     //cout<<"PT ="<<myEle->Pt()<<endl;
                     if(myEle->Pt()<20 )
@@ -129,20 +123,19 @@ void ana_ee(){
                 if(goodElectrons.size()>=2)
                 {
                     if(vetoee.size()==0)
-                    {
+                    { 
                         cutee[4]=true;
                     }
                 }
-                if(goodElectrons.size()==0)
-                {
-                    continue;
-                }
+                //cout<<"electron size"<<goodElectrons.size()<<endl;
                 //Sort electron by PT
                 sort(goodElectrons.begin(), goodElectrons.end(), pt_greater);
                 //4. veto tau (use to identified  and  rejected bg)
                 int nTau = data.GetInt("HPSTau_n");
                 TClonesArray* tauP4 = (TClonesArray*) data.GetPtrTObject("HPSTau_4Momentum");
                 vector<bool>& disc_decayModeFinding = *((vector<bool>*) data.GetPtr("disc_decayModeFinding"));// DecayModeFinding metho?
+                vector<bool>& disc_decayModeFindingNewDMs = *((vector<bool>*) data.GetPtr("disc_decayModeFindingNewDMs"));// DecayModeFinding metho?
+                vector<bool>& disc_byMediumIsolationMVA3newDMwLT = *((vector<bool>*) data.GetPtr("disc_byMediumIsolationMVA3newDMwLT"));// DecayModeFinding metho?
                 vector<TLorentzVector> goodtau;
                 goodtau.clear();
                 for(int it=0; it < nTau; it++)
@@ -156,7 +149,11 @@ void ana_ee(){
                     {
                         continue;
                     }
-                    if(!disc_decayModeFinding[it])
+                    if(!disc_decayModeFindingNewDMs[it])
+                    {
+                        continue;
+                    }
+                    if(!disc_byMediumIsolationMVA3newDMwLT[it])
                     {
                         continue;
                     }
@@ -164,7 +161,7 @@ void ana_ee(){
                 }//end of tau loop
                 taunumb->Fill(goodtau.size());
                 bool tauee = false;
-            
+                //cutee[5]=true;
                 if(goodtau.size()>0)
                 {
                     for(int i=0;i<goodtau.size();i++)
@@ -174,64 +171,133 @@ void ana_ee(){
                             double dr = goodtau[i].DeltaR(goodElectrons[j]);
                             drtaue->Fill(dr);
                             //cout<<"dr ="<<dr<<endl;
-                            /*
                             if(goodtau[i].DeltaR(goodElectrons[j])>0.4)
                             {
-                                //tauee = true;
-                                //break;
+                                tauee = true;
+                                break;
                             }
-                            */
+                            
                         }
-                        //if(tauee)
-                        //{
-                        //    break;
-                        //}
+                        if(tauee)
+                        {
+                            break;
+                        }
                 
                     }
-                    //if(tauee)
-                    //{
-                    //    continue;
-                    //}
                 }//End of veto tau
+                if(tauee)
+                {
+                    cutee[5]=true;
+                    //continue;
+                }
                 //Start combination Z boson
-                double PDGZmass=91.1876;
-                double PT1, PT2;
-                double PT;
-                double deltaMass;
-                PT1=goodElectrons[0].Pt();
-                PT2=goodElectrons[1].Pt();
-                cutee[5]=true;
-                if(PT1>25&&PT2>20)
+                if(goodElectrons.size()>=2)
                 {
                     cutee[6]=true;
-                    TLorentzVector Z_boson_ee;
-                    Z_boson_ee=goodElectrons[0]+goodElectrons[1];
-                    deltaMass=abs(PDGZmass-Z_boson_ee.M());
-                    if(deltaMass>15)continue;
-                    cutee[7]=true;
-                    Z_massee->Fill(Z_boson_ee.M());
-                }
-                for(int i=0;i<=7;i++)
-                {
-                   if(cutee[i])
+                    double PDGZmass=91.1876;
+                    double PT1, PT2;
+                    double PT;
+                    double deltaMass;       
+                    PT1=goodElectrons[0].Pt();
+                    PT2=goodElectrons[1].Pt();
+                    //cout<<"PT1 = "<<PT1<<endl;
+                    //cout<<"PT2 = "<<PT2<<endl;
+                    if(PT1>25&&PT2>20)
                     {
-                        nelePass[i]++;
-                    }    
+                        cutee[7]=true;
+                        TLorentzVector Z_boson_ee;
+                        Z_boson_ee=goodElectrons[0]+goodElectrons[1];
+                        deltaMass=abs(PDGZmass-Z_boson_ee.M());
+                        if(deltaMass<15)
+                        {
+                            cutee[8]=true;
+                            Z_massee->Fill(Z_boson_ee.M());
+                        }
+                    }
                 }
-
+                //Save Thin Jet some variable
+                //vector<bool>& disc_decayModeFinding = *((vector<bool>*) data.GetPtr("disc_decayModeFinding"));// DecayModeFinding metho?
+                
+                int nTHINJets  = data.GetInt("THINnJet");
+                TClonesArray* thinjetP4 = (TClonesArray*) data.GetPtrTObject("THINjetP4");
+                //vector<vector<float>> &THINjetTrackPt = *((vector<vector<float>>*)data.GetPtr("THINjetTrackPt"));
+                //vector<vector<float>> &THINjetTrackImpdz = *((vector<vector<float>>*)data.GetPtr("THINjetTrackImpdz"));
+                //vector<vector<float>> &THINjetTrackImpdxy = *((vector<vector<float>>*)data.GetPtr("THINjetTrackImpdxy"));
+                //vector<vector<float>> &THINjetTrackImpdxyError = *((vector<vector<float>>*)data.GetPtr("THINjetTrackImpdxyError"));
+                vector<float>   *THINjetTrackPt =  data.GetPtrVectorFloat("THINjetTrackPt", nTHINJets);
+                /*
+                for(int i=0; i < nTHINJets; i++)
+                {
+                    TLorentzVector* thisJet = (TLorentzVector*)thinjetP4->At(i);
+                    if(thisJet->Pt()<30)
+                    {
+                        continue;
+                    }
+                    if(fabs(thisJet->Eta())>4.5)
+                    {
+                        continue;
+                    }
+                    for(int j=0;j<THINjetTrackPt[i].size();j++)
+                    {
+                        //cout<<"THINjetTrackPt = "<<THINjetTrackPt[j]<<endl;
+                    }
+                }
+                */
+                //Start Calculate efficiency
+                if(!cutee[1])
+                {
+                    continue;
+                }
+                nelePass[1]++;
+                if(!cutee[2])
+                {
+                    continue;
+                }
+                nelePass[2]++;
+                if(!cutee[3])
+                {
+                    continue;
+                }
+                nelePass[3]++;
+                if(!cutee[4])
+                {
+                   continue;
+                }
+                nelePass[4]++;
+                if(cutee[5])
+                { 
+                    continue;
+                }
+                nelePass[5]++;
+                if(!cutee[6])
+                {
+                    continue;
+                }
+                nelePass[6]++;
+                //
+                if(!cutee[7])
+                {
+                    continue;
+                }
+                nelePass[7]++;
+                if(!cutee[8])
+                {
+                    continue;
+                }
+                nelePass[8]++;
             }//End of Z->ee events 
             
         }//End of loop over entries
         cout<<"nTotal = "<<nTotal<<endl;
         cout<<"neeTotal = "<<neeTotal<<endl;
-        
         cout<<"End of file"<<endl;
-    }
-    for(int i=0;i<8;i++)
+    }//End of loop all files  
+    for(int i=0;i<9;i++)
     {
         cout << "nelePass[" << i << "]= " << nelePass[i] << endl;
         efferr(nelePass[i],neeTotal);
     }
+    
     //cout<<"Totle true 2 electron"<<neeTotal<<endl;
     string outputfile = "../output/test.root";
     // out Tree branches

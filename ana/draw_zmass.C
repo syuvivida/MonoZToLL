@@ -31,6 +31,7 @@ void draw_zmass()
     var3->Draw("same");
     var4->Draw("same");
 */
+
 /*
     var5->GetXaxis()->SetTitle("numbers");
     var5->GetXaxis()->SetBinLabel(1, "0");
@@ -41,8 +42,18 @@ void draw_zmass()
     var5->GetXaxis()->SetBinLabel(6, "5");
     var5->GetXaxis()->SetBinLabel(7, "6"); 
     var5->Draw();
-*/ 
+*/
 var1->GetXaxis()->SetTitle("dr");
+
+//TH1D *var1Cumu = (TH1D*)var1->GetCumulative(false);
+//cout<<"right = "<<(var1->GetEntries()-var1->GetBinContent(0)-var1->GetBinContent(var1->GetNbinsX()+1))<<endl;
+//cout<<"left = "<<(var1Cumu->GetBinContent(1))<<endl;
+//if((var1Cumu->GetBinContent(1))!=(var1->GetEntries()-var1->GetBinContent(0)-var1->GetBinContent(var1->GetNbinsX()+1)))
+//{
+//    cout<<"bug"<<endl;
+//}
+//var1Cumu->Scale(1/(var1Cumu->GetBinContent(1)));
+//var1Cumu->Draw();
 var1->Draw();
     /*
     TLegend *legend = new TLegend(0.55, 0.65, 0.76, 0.82);
