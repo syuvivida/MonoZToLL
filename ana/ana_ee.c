@@ -92,6 +92,7 @@ void ana_ee(){
                     TLorentzVector* myEle = (TLorentzVector*)eleP4->At(ie);
                     elePT->Fill(myEle->Pt());
                     //cout<<"PT ="<<myEle->Pt()<<endl;
+                    cutee[0]=true;
                     if(myEle->Pt()<20 )
                     {
                         continue;
@@ -244,6 +245,11 @@ void ana_ee(){
                 }
                 */
                 //Start Calculate efficiency
+                if(!cutee[0])
+                {
+                    continue;
+                }
+                nelePass[0]++;
                 if(!cutee[1])
                 {
                     continue;
