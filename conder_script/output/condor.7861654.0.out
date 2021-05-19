@@ -1,0 +1,46 @@
+subject   : /DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=kuanyu/CN=852171/CN=Kuanyu Chen/CN=1888444563
+issuer    : /DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=kuanyu/CN=852171/CN=Kuanyu Chen
+identity  : /DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=kuanyu/CN=852171/CN=Kuanyu Chen
+type      : RFC3820 compliant impersonation proxy
+strength  : 2048
+path      : /afs/cern.ch/user/k/kuanyu/private/x509up
+timeleft  : 167:08:27
+key usage : Digital Signature, Key Encipherment
+=== VO cms extension information ===
+VO        : cms
+subject   : /DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=kuanyu/CN=852171/CN=Kuanyu Chen
+issuer    : /DC=ch/DC=cern/OU=computers/CN=lcg-voms2.cern.ch
+attribute : /cms/Role=NULL/Capability=NULL
+timeleft  : 167:08:27
+uri       : lcg-voms2.cern.ch:15002
+
+subject   : /DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=kuanyu/CN=852171/CN=Kuanyu Chen/CN=1888444563
+issuer    : /DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=kuanyu/CN=852171/CN=Kuanyu Chen
+identity  : /DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=kuanyu/CN=852171/CN=Kuanyu Chen
+type      : RFC3820 compliant impersonation proxy
+strength  : 2048
+path      : /afs/cern.ch/user/k/kuanyu/private/x509up
+timeleft  : 167:08:26
+key usage : Digital Signature, Key Encipherment
+=== VO cms extension information ===
+VO        : cms
+subject   : /DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=kuanyu/CN=852171/CN=Kuanyu Chen
+issuer    : /DC=ch/DC=cern/OU=computers/CN=lcg-voms2.cern.ch
+attribute : /cms/Role=NULL/Capability=NULL
+timeleft  : 167:08:26
+uri       : lcg-voms2.cern.ch:15002
+
+1 is DYJetsToLL_M-50_HT-800to1200_TuneCUETP8M1_13TeV-madgraphMLM-pythia8.txt
+2 is fullDYHT800_1200.root
+   ------------------------------------------------------------------
+  | Welcome to ROOT 6.22/08                        https://root.cern |
+  | (c) 1995-2020, The ROOT Team; conception: R. Brun, F. Rademakers |
+  | Built for linuxx8664gcc on Mar 10 2021, 14:20:04                 |
+  | From tags/v6-22-08@v6-22-08                                      |
+  | Try '.help', '.demo', '.license', '.credits', '.quit'/'.q'       |
+   ------------------------------------------------------------------
+
+
+Processing ./xAna_ztoee.C("DYJetsToLL_M-50_HT-800to1200_TuneCUETP8M1_13TeV-madgraphMLM-pythia8.txt","fullDYHT800_1200.root")...
+SumWeight = 2668730
+finish the code

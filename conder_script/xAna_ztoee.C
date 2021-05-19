@@ -20,11 +20,9 @@ bool pt_greater(const TLorentzVector a, const TLorentzVector b){
     double B = b.Pt();
     return (A > B);
 }
-void xAna_ztoee(string inputtxtFilename = "../ntuple_filelist/DYJets_HTBin/DYJetsToLL_M-50_HT-70to100_TuneCUETP8M1_13TeV-madgraphMLM-pythia8.txt", string outputname = "fullDYHT70_100")
+void xAna_ztoee(string inputtxtFilename = "DYJetsToLL_Pt-400To650_TuneCUETP8M1_13TeV-amcatnloFXFX-pythia8.txt", string outputfile = "fullDYPT400_650.root")
 {
-    //./ntuple_filelist/signal/DarkMatter_MonoZToLL_NLO_Vector_Mx2-1_Mv-500_gDM1_gQ0p25_TuneCUETP8M1_Mx1-0p1_ctau-1_13TeV-madgraph.txt
     TTree outTree("tree","out branches");
-    //ifstream inputtxtFile("../ntuple_filelist/DYJets_HTBin/DYJetsToLL_M-50_HT-100to200_TuneCUETP8M1_13TeV-madgraphMLM-pythia8.txt");
     ifstream inputtxtFile(inputtxtFilename.data());
     string inputFile;
     //void some variable
@@ -278,7 +276,7 @@ void xAna_ztoee(string inputtxtFilename = "../ntuple_filelist/DYJets_HTBin/DYJet
     }//End of loop all files
     cout<<"SumWeight = "<<SSum<<endl;
     
-        string outputfile = outputname+".root";
+        //string outputfile = outputname+".root";
         // out Tree branches
 	    TFile* outFile = new TFile(outputfile.c_str(), "RECREATE" );
 	    outFile->Write();
